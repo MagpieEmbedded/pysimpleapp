@@ -18,6 +18,18 @@ pysimpleapp
 
 Simple framework for applications in python
 
+Aims
+----
+
+This package is intended to provide the basic components for a  graphical application in Python.
+It grew out of a frustration with existing tutorials on writing GUI applications in Python.
+
+It is intended to be GUI framework agnostic, although some common frameworks have been included for demonstration and ease of use.
+
+There should also be a relatively thorough set of tutorials alongside the main code.
+This will teach how to use the software.
+Read the documentation to find out why the software is this way.
+
 
 * Free software: MIT license
 * Documentation: https://pysimpleapp.readthedocs.io.
@@ -27,6 +39,8 @@ Features
 --------
 
 * TODO
+* Attempt to implement best practices
+* Documentation and tutorials
 
 Credits
 -------

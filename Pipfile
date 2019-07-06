@@ -14,6 +14,9 @@ coverage = "==4.5.1"
 twine = "==1.12.1"
 black = "*"
 pre-commit = "*"
+sphinx = "*"
+sphinx-autobuild = "*"
+doc8 = "*"
 
 [requires]
 python_version = "3.7"
