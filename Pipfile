@@ -4,7 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pysimpleapp = {path = "."}
+pysimpleapp = {editable = true,path = "."}
 
 [packages]
 bumpversion = "==0.5.3"
@@ -15,10 +15,6 @@ coverage = "==4.5.1"
 twine = "==1.12.1"
 black = "*"
 pre-commit = "*"
-sphinx = "*"
-sphinx-autobuild = "*"
-doc8 = "*"
-sphinx-rtd-theme = "*"
 
 [requires]
 python_version = "3.7"

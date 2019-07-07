@@ -12,6 +12,7 @@ from typing import List
 from queue import Queue
 import logging
 from pysimpleapp import Message
+import time
 
 
 class MultiRunThread(threading.Thread):
@@ -19,7 +20,7 @@ class MultiRunThread(threading.Thread):
     Template thread which executes its *main* function many times.
     Can take start, end commands as well as updating parameters.
 
-    Must be provided with a name, owner, input and output queues.
+    Must be initialised with a name, owner, input and output queues.
 
     The operation of the thread is implemented in *main()*
     This function should be overridden during implementation.
@@ -58,8 +59,8 @@ class MultiRunThread(threading.Thread):
 
         # Create parameters and store a copy in latest_parameters to capture updates
         self.parameters = {}
-        self._create_params()
-        self.latest_parameters = self.paramaters
+        self.create_params()
+        self.latest_parameters = self.parameters
 
     def main(self):
         """
@@ -196,3 +197,45 @@ class MultiRunThread(threading.Thread):
 
         # Return true and exit
         return True
+
+
+class ExampleMultiRunThread(MultiRunThread):
+    """Example implementation of MultiRunThread class"""
+
+    def main(self):
+        """Example main function"""
+        print("Running main function...")
+
+
+if __name__ == "__main__":
+    # Run the example
+    in_queue = Queue()
+    output_queue = Queue()
+
+    EMR1 = ExampleMultiRunThread(
+        "Example Thread", "Main Thread", in_queue, output_queue
+    )
+
+    print(type(EMR1))
+
+    print(f"Active threads: {threading.active_count()}")
+    EMR1.start()
+    time.sleep(1)
+
+    print(f"Active threads: {threading.active_count()}")
+    time.sleep(1)
+
+    in_queue.put(Message("Tester", "Example Thread", "THREAD_START", None))
+    time.sleep(1)
+
+    in_queue.put(Message("Tester", "Example Thread", "THREAD_START", None))
+    time.sleep(1)
+
+    in_queue.put(Message("Tester", "Example Thread", "THREAD_START", None))
+    time.sleep(1)
+
+    in_queue.put(Message("Tester", "Example Thread", "THREAD_END", None))
+    time.sleep(1)
+
+    print(f"Active threads: {threading.active_count()}")
+    time.sleep(1)
