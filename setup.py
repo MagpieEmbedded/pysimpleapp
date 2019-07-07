@@ -35,11 +35,11 @@ setup(
     include_package_data=True,
     keywords="pysimpleapp",
     name="pysimpleapp",
-    packages=find_packages(include=["pysimpleapp"]),
+    packages=find_packages(),
     setup_requires=setup_requirements,
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/MagpieEmbedded/pysimpleapp",
-    version="version='0.1.1'",
+    version="0.1.1",
     zip_safe=False,
 )
