@@ -27,3 +27,7 @@ class Message:
         self.receiver = receiver
         self.command = command
         self.package = package
+
+    def __str__(self):
+        """Provides a human readable output of the message"""
+        return f"Sender: {self.sender}, Receiver: {self.receiver}, Command: {self.command}, Package: {self.package}"

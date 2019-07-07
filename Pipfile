@@ -9,7 +9,7 @@ pysimpleapp = {path = "."}
 [packages]
 bumpversion = "==0.5.3"
 watchdog = "==0.9.0"
-flake8 = "==3.5.0"
+flake8 = "*"
 tox = "==3.5.2"
 coverage = "==4.5.1"
 twine = "==1.12.1"
