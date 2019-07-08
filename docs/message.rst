@@ -16,6 +16,6 @@ There are also various helper functions to automatically fill in some of these f
 From experience, dictionaries work well.
 Adding labels to the data does not add much overhead, but does make the message much easier to parse, allowing for changes in input order, new fields etc.
 
-.. autoclass:: pysimpleapp.Message
+.. autoclass:: pysimpleapp.message.Message
     :members: __init__
 
