@@ -30,10 +30,10 @@ class ExampleMultiRunThread(MultiRunThread):
 
 class ExampleRepeatingThread(RepeatingThread):
     def create_params(self):
-        pass
+        self.start_time = time.time()
 
     def main(self):
-        print("Running repeating thread...")
+        print(f"Running repeating thread after {time.time() - self.start_time}s")
 
 
 if __name__ == "__main__":
@@ -88,19 +88,22 @@ if __name__ == "__main__":
         repeating_runner_name, owner, in_queue, out_queue
     )
     print(f"Active Threads: {threading.active_count()}")
+    print(f"{repeating_runner.parameters}")
+    in_queue.put(
+        Message(owner, repeating_runner_name, "THREAD_UPDATE", {"loop_timer": 5})
+    )
     time.sleep(1)
 
     print("Sending start messsage")
     in_queue.put(Message(owner, repeating_runner_name, "THREAD_START", None))
-    time.sleep(5)
+    time.sleep(7)
 
-    print("Sending stop messsage")
     in_queue.put(Message(owner, repeating_runner_name, "THREAD_STOP", None))
-    time.sleep(5)
-
-    print("Sending start messsage")
+    in_queue.put(
+        Message(owner, repeating_runner_name, "THREAD_UPDATE", {"loop_timer": 0.1})
+    )
     in_queue.put(Message(owner, repeating_runner_name, "THREAD_START", None))
-    time.sleep(5)
+    time.sleep(1)
 
     print("Sending end messsage")
     in_queue.put(Message(owner, repeating_runner_name, "THREAD_END", None))

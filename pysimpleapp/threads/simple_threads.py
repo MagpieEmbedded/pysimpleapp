@@ -87,9 +87,9 @@ class SimpleThread(ABC, threading.Thread):
 
         # Set up address book
         self.address_book = {
-            "THREAD_START": self.__thread_start,
-            "THREAD_STOP": self.__thread_stop,
-            "THREAD_END": self.__thread_end,
+            "THREAD_START": self._thread_start,
+            "THREAD_STOP": self._thread_stop,
+            "THREAD_END": self._thread_end,
             "THREAD_UPDATE": self._update_params,
             "THEAD_HANDLE": self.custom_handler,
         }
@@ -135,15 +135,15 @@ class SimpleThread(ABC, threading.Thread):
         """
         pass
 
-    def __thread_start(self, message: Message):
+    def _thread_start(self, message: Message):
         """Handle a start message by setting the start flag"""
         self.start_flag.set()
 
-    def __thread_stop(self, message: Message):
+    def _thread_stop(self, message: Message):
         """Handle a stop message by setting the stop flag"""
         self.stop_flag.set()
 
-    def __thread_end(self, message: Message):
+    def _thread_end(self, message: Message):
         self.end_flag.set()
 
     def custom_handler(self, message: Message):
@@ -175,8 +175,8 @@ class SimpleThread(ABC, threading.Thread):
                 f"Expected dictionary as package for parameter update, got {message}"
             )
 
-        for key, value in new_params:
-            if key in self.paramaters.iterkeys():
+        for key, value in new_params.items():
+            if key in self.parameters.keys():
                 self.parameters[key] = value
             else:
                 self.logger.error(
@@ -214,7 +214,7 @@ class SimpleThread(ABC, threading.Thread):
             self.address_book[message.command](message)
         except KeyError:
             logging.error(
-                f"Expected command in {self.address_book.iterkeys()}, got {message.command} in message: {message}"
+                f"Expected command in {self.address_book.keys()}, got {message.command} in message: {message}"
             )
 
         return
@@ -321,16 +321,43 @@ class RepeatingThread(SimpleThread):
         self, name: str, owner: List[str], input_queue: Queue, output_queue: Queue
     ):
         super().__init__(name, owner, input_queue, output_queue)
+        # Add loop timer parameter to describe how often function should run
         self.parameters["loop_timer"] = 1
+        # Add repeat function to address book
+        self.address_book["THREAD_REPEAT"] = self._thread_repeat
+        # Hold onto the current timer to cancel if necessary
+        self.repeat_timer = None
+
+    def _thread_repeat(self, message: Message):
+        """
+        Raises the start flag but does not clear stop flag.
+        This prevents the repeating command from overriding a stop command.
+        """
+        self.start_flag.set()
+
+    def _thread_start(self, message: Message):
+        """
+        Thread start in a repeating thread raises start flag and also clears stop flag.
+        This ensures that a THREAD_START command will always trigger a main run.
+        """
+        self.start_flag.set()
+        self.stop_flag.clear()
+
+    def _thread_stop(self, message: Message):
+        """Raise the stop flag and cancel the current timer"""
+        self.stop_flag.set()
+        if self.repeat_timer:
+            self.repeat_timer.cancel()
 
     def repeating_start(self):
         """Command to set the *main* function going again"""
-        self.input_queue.put(Message(self.name, self.name, "THREAD_START", None))
+        self.input_queue.put(Message(self.name, self.name, "THREAD_REPEAT", None))
 
     def _control_loop(self):
         """Run the main function and set a timer on sending a new start command, unless the stop flag is raised."""
-        if self.stop_flag.is_set():
-            self.stop_flag.clear()
-        else:
+        if not self.stop_flag.is_set():
             self.main()
-            threading.Timer(self.parameters["loop_timer"], self.repeating_start).start()
+            self.repeat_timer = threading.Timer(
+                self.parameters["loop_timer"], self.repeating_start
+            )
+            self.repeat_timer.start()
