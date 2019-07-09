@@ -339,9 +339,13 @@ class RepeatingThread(SimpleThread):
         """
         Thread start in a repeating thread raises start flag and also clears stop flag.
         This ensures that a THREAD_START command will always trigger a main run.
+        
+        Cancel the repeat_timer if it is currently waiting to ensure timing starts from this point
         """
         self.start_flag.set()
         self.stop_flag.clear()
+        if self.repeat_timer:
+            self.repeat_timer.cancel()
 
     def _thread_stop(self, message: Message):
         """Raise the stop flag and cancel the current timer"""
@@ -361,3 +365,124 @@ class RepeatingThread(SimpleThread):
                 self.parameters["loop_timer"], self.repeating_start
             )
             self.repeat_timer.start()
+
+
+class PreciseRepeatingThread(RepeatingThread):
+    """
+    Like the repeating thread but with more of an emphasis on getting the timing exactly right.
+
+    Use command "SET_LOOP_TIMER" with a package of {"loop_timer": $time} to ensure changes are handled properly.
+
+    Subtracts the amount of time taken for the *main* function exection from the time to wait until the
+    next call.
+    Use this if there is a function for which regularity is important but functionality can
+    occasionally be slow.
+    
+    If main execution takes longer than loop_timer, an error message will be logged.
+    """
+
+    def __init__(self, name, owner, input_queue: Queue, output_queue: Queue):
+        super().__init__(name, owner, input_queue, output_queue)
+        # Initialize started time and count on number of main runs
+        self.started_time = 0.0
+        self.main_runs = 0
+        # Set flag for new loop timer
+        self.new_loop_timer_flag = threading.Event()
+        # Add loop timer instruction to address book
+        self.address_book["SET_LOOP_TIMER"] = self.set_loop_timer
+
+    def set_loop_timer(self, message: Message):
+        """Update the loop timer parameter and raise flag to start measuring from a new point"""
+        try:
+            assert type(message.package) == dict
+            assert "loop_timer" in message.package.keys()
+            self._update_params(message)
+            self.new_loop_timer_flag.set()
+        except AssertionError:
+            logging.error(
+                f"Expected 'loop_timer' in dict for loop timer, got {type(message.package)}"
+            )
+
+    def _thread_repeat(self, message: Message):
+        """Do nothing"""
+        pass
+
+    def _thread_start(self, message: Message):
+        """Set the start flag and also record the time at which a new start was commanded"""
+        super()._thread_start(message)
+        self.started_time = time.time()
+
+    def _thread_stop(self, message: Message):
+        super()._thread_stop(message)
+        self.main_runs = 0
+
+    def repeating_start(self):
+        """Set the start flag and put an event in the queue"""
+        self.start_flag.set()
+        self.input_queue.put(Message(self.name, self.name, "THREAD_REPEAT", None))
+
+    def _control_loop(self):
+        """
+        Get a start time, run the main function and set a timer for as close to the timer_loop as possible.
+        
+        If the main loop took longer than the timer_loop period, raise a TimeoutError to be logged and handled in *run*.
+        """
+        if not self.stop_flag.is_set():
+            main_start_time = time.time()
+            self.main()
+            # Bigger of 0 or loop_timer minus the time taken for main to execute, adding the difference between
+            # the time the thread should be at after this many runs vs where it actually is
+            main_finish_time = time.time()
+            # Only for when a new loop_timer is set
+            if self.new_loop_timer_flag.is_set():
+                self.started_time = main_start_time
+                self.main_runs = 0
+                self.new_loop_timer_flag.clear()
+            repeat_time = max(
+                [
+                    0.0,
+                    (
+                        self.parameters["loop_timer"]
+                        - (main_finish_time - main_start_time)
+                        + (
+                            (
+                                self.parameters["loop_timer"] * self.main_runs
+                                + self.started_time
+                                - main_start_time
+                            )
+                        )
+                    ),
+                ]
+            )
+            # print(repeat_time)
+            self.repeat_timer = threading.Timer(repeat_time, self.repeating_start)
+            self.repeat_timer.start()
+            self.main_runs += 1
+            # Log that an error ocurred
+            if repeat_time == 0.0:
+                raise TimeoutError
+
+    def run(self):
+        """Change the run function to give priority to a main call"""
+        while self.end_flag.is_set() is False:
+            # Check whether start flag has been raised
+            if self.start_flag.is_set():
+                try:
+                    self._control_loop()
+                except TimeoutError:
+                    self.logger.error(
+                        f"Main function took longer than loop_timer of {self.parameters['loop_timer']} to execute"
+                    )
+                except Exception:
+                    self.logger.exception("Error ocurred in main function")
+                    # Exit gracefully
+                    self.end_flag.set()
+                # Clear the flag to prevent running continuously
+                self.start_flag.clear()
+
+            # Get message from input queue and handle it
+            message = self.input_queue.get()
+            self._message_handle(message)
+
+        # Return true and exit
+        return True

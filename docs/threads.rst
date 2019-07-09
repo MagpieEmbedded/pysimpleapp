@@ -23,3 +23,9 @@ Repeating Thread
 
 .. autoclass:: pysimpleapp.threads.simple_threads.RepeatingThread
     :members:
+
+Precise Repeating Thread
+------------------------
+
+.. autoclass:: pysimpleapp.threads.simple_threads.PreciseRepeatingThread
+    :members:
