@@ -386,8 +386,8 @@ class PreciseRepeatingThread(RepeatingThread):
         # Initialize started time and count on number of main runs
         self.started_time = 0.0
         self.main_runs = 0
-        # Set flag for new loop timer
-        self.new_loop_timer_flag = threading.Event()
+        # Set flag for basing predictions
+        self.new_predictions_flag = threading.Event()
         # Add loop timer instruction to address book
         self.address_book["SET_LOOP_TIMER"] = self.set_loop_timer
 
@@ -397,7 +397,7 @@ class PreciseRepeatingThread(RepeatingThread):
             assert type(message.package) == dict
             assert "loop_timer" in message.package.keys()
             self._update_params(message)
-            self.new_loop_timer_flag.set()
+            self.new_predictions_flag.set()
         except AssertionError:
             logging.error(
                 f"Expected 'loop_timer' in dict for loop timer, got {type(message.package)}"
@@ -410,14 +410,10 @@ class PreciseRepeatingThread(RepeatingThread):
     def _thread_start(self, message: Message):
         """Set the start flag and also record the time at which a new start was commanded"""
         super()._thread_start(message)
-        self.started_time = time.time()
-
-    def _thread_stop(self, message: Message):
-        super()._thread_stop(message)
-        self.main_runs = 0
+        self.new_predictions_flag.set()
 
     def repeating_start(self):
-        """Set the start flag and put an event in the queue"""
+        """Set the start flag and put an event in the queue to trigger a run"""
         self.start_flag.set()
         self.input_queue.put(Message(self.name, self.name, "THREAD_REPEAT", None))
 
@@ -434,10 +430,10 @@ class PreciseRepeatingThread(RepeatingThread):
             # the time the thread should be at after this many runs vs where it actually is
             main_finish_time = time.time()
             # Only for when a new loop_timer is set
-            if self.new_loop_timer_flag.is_set():
+            if self.new_predictions_flag.is_set():
                 self.started_time = main_start_time
                 self.main_runs = 0
-                self.new_loop_timer_flag.clear()
+                self.new_predictions_flag.clear()
             repeat_time = max(
                 [
                     0.0,
@@ -457,6 +453,7 @@ class PreciseRepeatingThread(RepeatingThread):
             # print(repeat_time)
             self.repeat_timer = threading.Timer(repeat_time, self.repeating_start)
             self.repeat_timer.start()
+            # Count runs of main function
             self.main_runs += 1
             # Log that an error ocurred
             if repeat_time == 0.0:
@@ -467,6 +464,8 @@ class PreciseRepeatingThread(RepeatingThread):
         while self.end_flag.is_set() is False:
             # Check whether start flag has been raised
             if self.start_flag.is_set():
+                # Clear the flag to prevent running continuously
+                self.start_flag.clear()
                 try:
                     self._control_loop()
                 except TimeoutError:
@@ -477,8 +476,6 @@ class PreciseRepeatingThread(RepeatingThread):
                     self.logger.exception("Error ocurred in main function")
                     # Exit gracefully
                     self.end_flag.set()
-                # Clear the flag to prevent running continuously
-                self.start_flag.clear()
 
             # Get message from input queue and handle it
             message = self.input_queue.get()

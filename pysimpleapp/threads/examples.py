@@ -112,7 +112,6 @@ if __name__ == "__main__":
         repeating_runner_name, owner, in_queue, out_queue
     )
     print(f"Active Threads: {threading.active_count()}")
-    print(f"{repeating_runner.parameters}")
     in_queue.put(
         Message(owner, repeating_runner_name, "THREAD_UPDATE", {"loop_timer": 5})
     )
@@ -164,7 +163,7 @@ if __name__ == "__main__":
     time.sleep(5)
 
     in_queue.put(
-        Message(owner, precise_runner_name, "SET_LOOP_TIMER", {"loop_timer": 0.7})
+        Message(owner, precise_runner_name, "SET_LOOP_TIMER", {"loop_timer": 0.1})
     )
     time.sleep(5)
 
