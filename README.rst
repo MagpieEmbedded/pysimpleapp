@@ -44,7 +44,7 @@ Installation
 
 **pysimpleapp** is hosted on `PyPi <https://pypi.org/project/pysimpleapp//>`_ so can be installed with:
 
-.. code-block bash
+.. code-block:: bash
 
         pip install pysimpleapp
 
