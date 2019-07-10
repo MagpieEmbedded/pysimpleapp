@@ -17,6 +17,7 @@ black = "*"
 pre-commit = "*"
 setuptools = "*"
 wheel = "*"
+pysimpleapp = {editable = true,path = "."}
 
 [requires]
 python_version = "3.7"
