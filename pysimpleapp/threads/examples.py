@@ -66,6 +66,8 @@ if __name__ == "__main__":
 
     owner = "Example Owner"
 
+    active_threads = threading.active_count()
+
     print(f"Threads at start: {threading.active_count()}")
 
     print("Creating single run thread")
@@ -179,3 +181,7 @@ if __name__ == "__main__":
     print(f"Active Threads: {threading.active_count()}")
 
     print("All done!")
+
+    assert (
+        threading.active_count() == active_threads
+    ), f"Started with {active_threads} threads, finished with {threading.active_count()} :("
