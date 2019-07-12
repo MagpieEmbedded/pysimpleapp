@@ -13,6 +13,7 @@ install:
 # Command to run tests, e.g. python setup.py test
 script: 
   - tox
+  - python setup.py install
   - python pysimpleapp/threads/examples.py
 
 # Assuming you have installed the travis-ci CLI tool, after you
