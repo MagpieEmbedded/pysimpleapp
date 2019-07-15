@@ -2,6 +2,7 @@
 
 import threading
 from queue import Queue
+import logging
 import time
 
 from pysimpleapp.threads.simple_threads import (
@@ -61,6 +62,8 @@ class ExamplePreciseThread(PreciseRepeatingThread):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+
     in_queue = Queue()
     out_queue = Queue()
 

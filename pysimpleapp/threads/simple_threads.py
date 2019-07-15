@@ -73,7 +73,7 @@ class SimpleThread(ABC, threading.Thread):
         self.output_queue = output_queue
 
         # Give the logger name of the thread for debugging
-        self.logger = logging.getLogger(self.name)
+        self.logger = logging.getLogger(f"{type(self).__name__}-{self.name}")
 
         # Create control flags - some of these are for use in more complex threads
         self.start_flag = threading.Event()
@@ -199,13 +199,17 @@ class SimpleThread(ABC, threading.Thread):
         
         :params message: A *pysimpleapp.Message* object to process
         """
+        # Log the message
+        self.logger.debug(
+            f"MESSAGE Sender: {message.sender}, Command {message.command}, Package: {message.package}"
+        )
+
         # Sanity check that this is the thread meant to be receiving this message
         try:
             assert message.receiver == self.name
         except AssertionError:
             self.logger.error(
                 f"Expected message for {self.name}, got message for {message.receiver}\n"
-                f"Message contents: {message}"
             )
             # Leave
             return
