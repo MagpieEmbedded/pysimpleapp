@@ -65,7 +65,7 @@ Import libraries and classes:
 .. code-block:: python
 
         from pysimpleapp.message import Message
-        from pysimpleapp.threads.examples import ExampleSingleRunThread, ExampleMultiRunThread
+        from pysimpleapp.examples.thread_examples import ExampleSingleRunThread, ExampleMultiRunThread
         from queue import Queue
         from threading import Thread
 

@@ -54,14 +54,12 @@ class SimpleThread(ABC, threading.Thread):
 
     """
 
-    def __init__(
-        self, name: str, owner: List[str], input_queue: Queue, output_queue: Queue
-    ):
+    def __init__(self, name: str, owner: str, input_queue: Queue, output_queue: Queue):
         """
         Create the thread, set up control flags and call _create_params
 
         :param name: Identifier for the thread, could be list of strings depending on communication model
-        :param owner: Address of object which asked for this thread to be created
+        :param owner: Address of object which created the thread (often a ThreadManager)
         :param input_queue: Input pipe for messages which the thread is expected to process
         :param output_queue: Output pipe for messages which should be sent elsewhere
         """
@@ -206,7 +204,7 @@ class SimpleThread(ABC, threading.Thread):
 
         # Sanity check that this is the thread meant to be receiving this message
         try:
-            assert message.receiver == self.name
+            assert message.receiver == self.name or message.receiver == [self.name]
         except AssertionError:
             self.logger.error(
                 f"Expected message for {self.name}, got message for {message.receiver}\n"
@@ -321,9 +319,7 @@ class RepeatingThread(SimpleThread):
     *main* and *create_params* are left as abstract methods for the user to implement.
     """
 
-    def __init__(
-        self, name: str, owner: List[str], input_queue: Queue, output_queue: Queue
-    ):
+    def __init__(self, name: str, owner: str, input_queue: Queue, output_queue: Queue):
         super().__init__(name, owner, input_queue, output_queue)
         # Add loop timer parameter to describe how often function should run
         self.parameters["loop_timer"] = 1

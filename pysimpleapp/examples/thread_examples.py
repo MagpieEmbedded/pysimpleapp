@@ -27,7 +27,7 @@ class ExampleMultiRunThread(MultiRunThread):
         self.times_ran = 1
 
     def main(self):
-        print(f"Running multi run thread {self.times_ran:} times")
+        print(f"Running multi run thread called {self.name} {self.times_ran} times")
         self.times_ran += 1
 
 
