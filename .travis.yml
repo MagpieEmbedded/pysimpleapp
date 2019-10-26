@@ -14,7 +14,9 @@ install:
 script: 
   - tox
   - python setup.py install
-  - python pysimpleapp/threads/examples.py
+  - python pysimpleapp/examples/thread_examples.py
+  - python pysimpleapp/examples/example_tm.py
+  - python pysimpleapp/examples/example_tm_multirun.py
 
 # Assuming you have installed the travis-ci CLI tool, after you
 # create the Github repo and add it to Travis, run the
