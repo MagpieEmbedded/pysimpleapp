@@ -204,7 +204,7 @@ class SimpleThread(ABC, threading.Thread):
 
         # Sanity check that this is the thread meant to be receiving this message
         try:
-            assert message.receiver == self.name
+            assert message.receiver == self.name or message.receiver == [self.name]
         except AssertionError:
             self.logger.error(
                 f"Expected message for {self.name}, got message for {message.receiver}\n"

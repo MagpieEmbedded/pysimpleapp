@@ -133,9 +133,17 @@ class ThreadManager(MultiRunThread):
         # list of names of threads which have been destroyed and should have their output ignored
         self.destroyed_threads = []
 
+        # Add functions
+        self.address_book["NEW_THREAD"] = self.create_new_thread
+        self.address_book["SET_THREAD_TYPES"] = self.set_thread_types
+
     def _message_handle(self, message: Message):
         """Takes a slightly different approach to messages as it needs to handle
         different situations"""
+
+        self.logger.debug(
+            f"MESSAGE Sender: {message.sender}, Command {message.command}, Package: {message.package}"
+        )
 
         # Addressed to self
         if message.receiver == [self.name]:
@@ -159,3 +167,48 @@ class ThreadManager(MultiRunThread):
                     self.logger.error("Sender is a destroyed thread")
             else:
                 self.logger.error("Sender does not have enough information")
+
+    def create_new_thread(self, message: Message):
+        """Create a new thread of the type requested"""
+        # Extract message payload
+        try:
+            new_thread_name = message.package["thread_name"]
+            new_thread_type = message.package["thread_type"]
+        except KeyError:
+            self.logger.error("Message did not contain thread name and thread type")
+            # Exit function
+            return
+
+        # Check thread type exists
+        if new_thread_type not in self.thread_types.keys():
+            self.logger.error(
+                f"Could not find thread type {new_thread_type} in thread types"
+            )
+            # Exit function
+            return
+        # Check thread name not already in use
+        elif new_thread_name in self.active_threads.keys():
+            self.logger.error(f"Thread name {new_thread_name} is currently in use")
+            # Exit function
+            return
+
+        # Create the new thread and add it to the active_threads dictionary
+        # Has it's own input queue and output queue points to thread manager input queue where it will be handled
+        self.active_threads[new_thread_name] = self.thread_types[new_thread_type](
+            new_thread_name, self.name, Queue(), self.input_queue
+        )
+
+    def set_thread_types(self, message: Message):
+        """Update the thread types with the incoming message"""
+        if type(message.package) == dict:
+            self.thread_types.update(message.package)
+        else:
+            self.logger.error(
+                "Could not find dictionary in message to update thread types"
+            )
+
+    def create_params(self):
+        pass
+
+    def main(self):
+        pass
