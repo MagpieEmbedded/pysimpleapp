@@ -89,7 +89,7 @@ Also a good function to return useful information about which names are currentl
     # Create the ThreadManager
     example_manager = ThreadManager("Example Manager", "Owner", in_queue, out_queue)
     # Set the thread types with human readable names
-    in_queue.put(Message("Owner", "Example Manager", "SET_THREAD_TYPES", {"Multi Run": ExampleMultiRunThread}))
+    in_queue.put(Message("Owner", ["Example Manager"], "SET_THREAD_TYPES", {"Multi Run": ExampleMultiRunThread}))
 
     # Create multipe Multi Run thread instances
     in_queue.put(Message("Owner", ["Example Manager"], "NEW_THREAD", {"thread_name": "Multi 1", "thread_type": "Multi Run"}))
@@ -130,16 +130,21 @@ class ThreadManager(MultiRunThread):
 
         # dict of active threads
         self.active_threads = {}
-        # list of names of threads which have been destroyed and should have their output ignored
-        self.destroyed_threads = []
+        # set of names of threads which have been destroyed and should have their output ignored
+        self.destroyed_threads = set()
 
         # Add functions
         self.address_book["NEW_THREAD"] = self.create_new_thread
         self.address_book["SET_THREAD_TYPES"] = self.set_thread_types
+        self.address_book["DESTROY_THREAD"] = self.destroy_thread
+        self.address_book["ACTIVE_THREADS"] = self.get_active_threads
 
     def _message_handle(self, message: Message):
         """Takes a slightly different approach to messages as it needs to handle
         different situations"""
+
+        # Run garbage collection
+        self.garbage_collect()
 
         self.logger.debug(
             f"MESSAGE Sender: {message.sender}, Command {message.command}, Package: {message.package}"
@@ -164,12 +169,32 @@ class ThreadManager(MultiRunThread):
                     message.sender = [self.owner, *message.sender]
                     self.output_queue.put(message)
                 else:
-                    self.logger.error("Sender is a destroyed thread")
+                    self.logger.error(
+                        f"Sender {message.sender[1]} is a destroyed thread"
+                    )
             else:
-                self.logger.error("Sender does not have enough information")
+                self.logger.error(
+                    f"Sender {message.sender} does not have enough information"
+                )
 
         # Run garbage collection
         self.garbage_collect()
+
+    def _thread_end(self, message: Message):
+        # Mark all children to be destroyed
+        self.destroyed_threads = set(self.active_threads.keys())
+        # Send them all a thread end message
+        for thread_name in self.active_threads.keys():
+            self.active_threads[thread_name].input_queue.put(
+                Message(self.name, thread_name, "THREAD_END", None)
+            )
+
+        # Ensure that all child threads have ended before raising end flag
+        while len(self.active_threads.keys()) > 0:
+            # Wait for them to end and delete them
+            self.garbage_collect()
+
+        self.end_flag.set()
 
     def create_new_thread(self, message: Message):
         """Create a new thread of the type requested"""
@@ -210,6 +235,41 @@ class ThreadManager(MultiRunThread):
                 "Could not find dictionary in message to update thread types"
             )
 
+    def destroy_thread(self, message: Message):
+        """Send a THREAD_END message to a thread and add it to the list of deleted threads"""
+        try:
+            thread_name = message.package["thread_name"]
+        except KeyError:
+            self.logger("Could not find thread name to DELETE in message package")
+
+        if thread_name not in self.active_threads.keys():
+            self.logger.error(
+                f"Tried to DESTROY thread named {thread_name} but not found in active threads"
+            )
+            return
+        elif thread_name in self.destroyed_threads:
+            self.logger.error(
+                f"Thread named {thread_name} already marked to be DESTROYED"
+            )
+            return
+
+        # Send the thread end command
+        self.active_threads[thread_name].input_queue.put(
+            Message(self.name, thread_name, "THREAD_END", None)
+        )
+        # Mark out to be destroyed
+        self.destroyed_threads.add(thread_name)
+
+    def get_active_threads(self, message: Message):
+        """Return a dictionary to the sender of the currently active threads and the name of their thread class"""
+        active_threads_dict = {
+            thread_name: type(self.active_threads[thread_name]).__name__
+            for thread_name in self.active_threads.keys()
+        }
+        self.output_queue.put(
+            Message(self.name, message.sender, "ACTIVE_THREADS", active_threads_dict)
+        )
+
     def garbage_collect(self):
         """
         Necessary function to clear up threads which are no longer alive.
@@ -224,7 +284,11 @@ class ThreadManager(MultiRunThread):
         ]
 
         for thread_name in inactive_threads:
+            # Delete thread object
             del self.active_threads[thread_name]
+            # Remove thread name from set of destroyed threads
+            if thread_name in self.destroyed_threads:
+                self.destroyed_threads.remove(thread_name)
 
     def create_params(self):
         pass

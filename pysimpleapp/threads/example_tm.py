@@ -43,12 +43,49 @@ if __name__ == "__main__":
     print(f"Active Threads: {threading.active_count()}")
 
     # Run the thread
-    print("Running single run thread")
+    print("Send command to run single run thread")
     in_queue.put(Message(owner, [manager, "S1"], "THREAD_START", None))
     time.sleep(0.1)
     print(f"Active Threads: {threading.active_count()}")
 
-    print("Ending Example Manager")
+    # Create a new single run thread
+    print("New single run thread")
+    in_queue.put(
+        Message(
+            owner,
+            [manager],
+            "NEW_THREAD",
+            {"thread_name": "S2", "thread_type": "Single Run"},
+        )
+    )
+    time.sleep(0.1)
+    print(f"Active Threads: {threading.active_count()}")
+    # Create a new single run thread
+    print("New single run thread")
+    in_queue.put(
+        Message(
+            owner,
+            [manager],
+            "NEW_THREAD",
+            {"thread_name": "S3", "thread_type": "Single Run"},
+        )
+    )
+    time.sleep(0.1)
+    print(f"Active Threads: {threading.active_count()}")
+    # Create a new single run thread
+    print("New single run thread")
+    in_queue.put(
+        Message(
+            owner,
+            [manager],
+            "NEW_THREAD",
+            {"thread_name": "S4", "thread_type": "Single Run"},
+        )
+    )
+    time.sleep(0.1)
+    print(f"Active Threads: {threading.active_count()}")
+
+    print("Ending Example Manager and child threads")
     in_queue.put(Message(owner, [manager], "THREAD_END", None))
     time.sleep(0.1)
     print(f"Active Threads: {threading.active_count()}")
