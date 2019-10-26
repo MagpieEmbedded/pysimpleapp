@@ -3,8 +3,20 @@ many threads at the same time.
 
 It is a subclass of the MultiRunThread and manages the flow of information to and
 from running thread instances.
-It is addressed with the same commands as the MultiRunThread, with the special commands
-SET_THREAD_TYPES, NEW_THREAD and DESTROY_THREAD, all of which are explained below.
+
+**Thread Manager commands:**
+
+- *SET_THREAD_TYPES* - send a dictionary of keys to thread classes which you will wish to instantiate
+through the Thread Manager
+- *NEW_THREAD* - Create a new instance of a thread given a thread name and thread type
+- *DESTROY_THREAD* - Destroy a running thread and prevent any delayed output from leaking
+- *ACTIVE_THREADS* - Get a dictionary of all the threads which are active in the ThreadManager
+and what class of thread they are. Returns a message to the sender with *ACTIVE_THREADS* command
+
+Threads which are running in the ThreadManager can be accessed through the address ["THREAD_MANAGER_NAME", "THREAD_NAME"]
+with their usual commands.
+
+Further explanation of the commands and how the ThreadManager works are given below:
 
 The ThreadManager has a special dictionary of thread_types which may be set with the
 command SET_THREAD_TYPES.
