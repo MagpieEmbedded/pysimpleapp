@@ -2,7 +2,7 @@ import threading
 import time
 from queue import Queue
 
-from pysimpleapp.threads.thread_examples import ExampleMultiRunThread
+from pysimpleapp.examples.thread_examples import ExampleMultiRunThread
 from pysimpleapp.threads.thread_manager import ThreadManager
 from pysimpleapp.message import Message
 

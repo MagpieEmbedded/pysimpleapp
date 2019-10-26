@@ -3,7 +3,7 @@ import threading
 from queue import Queue
 
 from pysimpleapp.message import Message
-from pysimpleapp.thread_manager import ThreadManager
+from pysimpleapp.threads.thread_manager import ThreadManager
 from pysimpleapp.examples.thread_examples import ExampleSingleRunThread
 
 if __name__ == "__main__":
