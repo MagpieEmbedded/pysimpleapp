@@ -74,47 +74,6 @@ nor in the list of destroyed threads.
 This will require some garbage collection of the ThreadManager.
 Also a good function to return useful information about which names are currently being used
 
-**Example:**
-
-.. code-block:: python
-
-    from pysimpleapp.threads.examples import ExampleMultiRunThread
-    from pysimpleapp.threads import ThreadManager
-    from pysimpleapp.message import Message
-    from queue import Queue
-
-    in_queue = Queue()
-    out_queue = Queue()
-
-    # Create the ThreadManager
-    example_manager = ThreadManager("Example Manager", "Owner", in_queue, out_queue)
-    # Set the thread types with human readable names
-    in_queue.put(Message("Owner", ["Example Manager"], "SET_THREAD_TYPES", {"Multi Run": ExampleMultiRunThread}))
-
-    # Create multipe Multi Run thread instances
-    in_queue.put(Message("Owner", ["Example Manager"], "NEW_THREAD", {"thread_name": "Multi 1", "thread_type": "Multi Run"}))
-    in_queue.put(Message("Owner", ["Example Manager"], "NEW_THREAD", {"thread_name": "Multi 2", "thread_type": "Multi Run"}))
-    in_queue.put(Message("Owner", ["Example Manager"], "NEW_THREAD", {"thread_name": "Multi 3", "thread_type": "Multi Run"}))
-
-    # See that all the threads are running
-    import threading
-    threading.active_count()
-
-    # Run the threads
-    in_queue.put(Message("Owner", ["Example Manager", "Multi 1"], "THREAD_START", None))
-    in_queue.put(Message("Owner", ["Example Manager", "Multi 2"], "THREAD_START", None))
-    in_queue.put(Message("Owner", ["Example Manager", "Multi 3"], "THREAD_START", None))
-
-    #  And again
-    in_queue.put(Message("Owner", ["Example Manager", "Multi 3"], "THREAD_START", None))
-    in_queue.put(Message("Owner", ["Example Manager", "Multi 2"], "THREAD_START", None))
-    in_queue.put(Message("Owner", ["Example Manager", "Multi 1"], "THREAD_START", None))
-
-    # End the threads
-    in_queue.put(Message("Owner", ["Example Manager", "Multi 1"], "THREAD_END", None))
-    in_queue.put(Message("Owner", ["Example Manager", "Multi 2"], "THREAD_END", None))
-    in_queue.put(Message("Owner", ["Example Manager", "Multi 3"], "THREAD_END", None))
-
 """
 from queue import Queue
 
