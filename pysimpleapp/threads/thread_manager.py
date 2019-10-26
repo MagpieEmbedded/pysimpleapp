@@ -168,6 +168,9 @@ class ThreadManager(MultiRunThread):
             else:
                 self.logger.error("Sender does not have enough information")
 
+        # Run garbage collection
+        self.garbage_collect()
+
     def create_new_thread(self, message: Message):
         """Create a new thread of the type requested"""
         # Extract message payload
@@ -206,6 +209,22 @@ class ThreadManager(MultiRunThread):
             self.logger.error(
                 "Could not find dictionary in message to update thread types"
             )
+
+    def garbage_collect(self):
+        """
+        Necessary function to clear up threads which are no longer alive.
+        Checks for any threads which are not running any more and deletes them.
+        This clears up the active_threads namespace for another thread with the same name.
+        """
+        # Get a list of threads which are no longer active
+        inactive_threads = [
+            thread_name
+            for thread_name in self.active_threads
+            if self.active_threads[thread_name].is_alive() is False
+        ]
+
+        for thread_name in inactive_threads:
+            del self.active_threads[thread_name]
 
     def create_params(self):
         pass
