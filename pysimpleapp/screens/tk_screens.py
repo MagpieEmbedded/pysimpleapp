@@ -25,6 +25,7 @@ import threading
 from queue import Queue
 import tkinter as tk
 import time
+from typing import List
 
 from pysimpleapp.threads.simple_threads import RepeatingThread
 from pysimpleapp.message import Message
@@ -57,6 +58,12 @@ class TkScreenTemplate(ABC, tk.Frame):
     @abstractclassmethod
     def update(self, message: Message):
         pass
+
+    def send_to(self, receiver: List[str], command: str, package: any):
+        """Helper function for sending information from a screen correctly"""
+        self.output_queue.put(
+            Message([self.owner, self.name], receiver, command, package)
+        )
 
 
 class TkScreenManager(RepeatingThread):
@@ -160,7 +167,7 @@ class TkScreenManager(RepeatingThread):
             )
             return
         elif message.package not in self.active_screens:
-            self.logger.error(f"Screen '{message.package}' is already hidden'")
+            self.logger.error(f"Screen '{message.package}' is already hidden")
             return
 
         self.active_screens.remove(message.package)
