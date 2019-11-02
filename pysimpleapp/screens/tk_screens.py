@@ -20,55 +20,46 @@ Screens must implement constructor functions with the above parameters, show() a
 functions with no parameters and a message_handle function which takes messages.
 """
 
+from abc import ABC, abstractclassmethod
 import threading
 from queue import Queue
 import tkinter as tk
 import time
 
-from pysimpleapp.threads.simple_threads import SingleRunThread, RepeatingThread
+from pysimpleapp.threads.simple_threads import RepeatingThread
 from pysimpleapp.message import Message
 
 
-class MyFirstGUI(tk.Frame):
+class TkScreenTemplate(ABC, tk.Frame):
+    """
+    Template to build future screens on. Requires implementation of the necessary functions.
+    """
+
     def __init__(
         self, name: str, owner: str, output_queue: Queue, master, quit_command: callable
     ):
         super().__init__(master)
+        # Store variables
+        self.name = name
+        self.owner = owner
+        self.output_queue = output_queue
         self.master = master
-        self.master.geometry("500x500")
-        self.master.title(name)
-        self.message = f"Hello from {name}"
+        self.quit_command = quit_command
 
-        self.label = tk.Label(self, text="This is our first GUI!")
-        self.label.pack()
-
-        self.extra_label = tk.Label(self, text="Update this text with 'UPDATE' command")
-        self.extra_label.pack()
-
-        self.greet_button = tk.Button(self, text="Greet", command=self.greet)
-        self.greet_button.pack()
-
-        self.close_button = tk.Button(self, text="Close", command=quit_command)
-        self.close_button.pack()
-
+    @abstractclassmethod
     def show(self):
-        self.pack()
+        pass
 
+    @abstractclassmethod
     def hide(self):
-        self.pack_forget()
+        pass
 
-    def greet(self):
-        print(self.message)
-
+    @abstractclassmethod
     def update(self, message: Message):
-        # Can assume that message is for this screen as ScreenManager
-        # will have processed it properly but may be interested in message
-        # metadata such as sender
-        if message.command == "UPDATE":
-            self.extra_label.configure(text=message.package)
+        pass
 
 
-class Screen(RepeatingThread):
+class TkScreenManager(RepeatingThread):
     def __init__(self, name: str, owner: str, input_queue: Queue, output_queue: Queue):
         super().__init__(name, owner, input_queue, output_queue)
         # Set loop timer to 10Hz by default for regular screen updates
@@ -203,29 +194,3 @@ class Screen(RepeatingThread):
     def main(self):
         # print("Updating screen...")
         self.root.update()
-
-
-if __name__ == "__main__":
-
-    inq1 = Queue()
-    outq1 = Queue()
-
-    print("Running Tk Screen Manager")
-    Tk1 = Screen("Screen 1", "owner", inq1, outq1)
-
-    Tk1.input_queue.put(Message("owner", ["Screen 1"], "THREAD_START", None))
-    Tk1.input_queue.put(
-        Message(
-            "owner",
-            ["Screen 1"],
-            "NEW_SCREEN",
-            {"screen_name": "home", "screen_type": MyFirstGUI},
-        )
-    )
-    time.sleep(5)
-    Tk1.input_queue.put(Message("owner", ["Screen 1"], "SHOW_SCREEN", "home"))
-
-    time.sleep(5)
-    Tk1.input_queue.put(
-        Message("owner", ["Screen 1", "home"], "UPDATE", "Updated with a message!")
-    )
