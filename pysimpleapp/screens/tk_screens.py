@@ -22,7 +22,7 @@ functions with no parameters and a message_handle function which takes messages.
 
 from abc import ABC, abstractclassmethod
 import threading
-from queue import Queue
+from queue import Queue, Empty
 import tkinter as tk
 import time
 from typing import List
@@ -106,15 +106,19 @@ class TkScreenManager(RepeatingThread):
             if message.receiver[0] in self.active_screens:
                 self.screens[message.receiver[0]].update(message)
         else:
-            # Check sender is not in list of destroyed threads
-            if len(message.sender) > 1:
-                # Append name to front of sender and pass up
-                message.sender = [self.owner, *message.sender]
-                self.output_queue.put(message)
-            else:
-                self.logger.error(
-                    f"Sender {message.sender} does not have enough information"
-                )
+            self.process_outgoing_messsages(message)
+
+    def process_outgoing_messsages(self, message: Message):
+        """Process only the outgoing messages"""
+        # Check sender is not in list of destroyed threads
+        if len(message.sender) > 1:
+            # Append name to front of sender and pass up
+            message.sender = [self.owner, *message.sender]
+            self.output_queue.put(message)
+        else:
+            self.logger.error(
+                f"Sender {message.sender} does not have enough information"
+            )
 
     def create_params(self):
         pass
@@ -187,6 +191,15 @@ class TkScreenManager(RepeatingThread):
             self.screens[screen].hide()
         #  Destroy the root component
         self.root.destroy()
+        # Process any outgoing messages which have been added by screens
+        while self.input_queue.qsize():
+            try:
+                message = self.input_queue.get(block=False)
+            except Empty:
+                break
+            if self.name not in message.receiver:
+                self.process_outgoing_messsages(message)
+
         # End the thread
         super()._thread_end(message)
 
