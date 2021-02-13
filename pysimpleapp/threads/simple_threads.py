@@ -79,10 +79,6 @@ class SimpleThread(ABC, threading.Thread):
         self.reset_flag = threading.Event()
         self.end_flag = threading.Event()
 
-        # Create parameters
-        self.parameters = {}
-        self.create_params()
-
         # Set up address book
         self.address_book = {
             "THREAD_START": self._thread_start,
@@ -91,6 +87,10 @@ class SimpleThread(ABC, threading.Thread):
             "THREAD_UPDATE": self._update_params,
             "THEAD_HANDLE": self.custom_handler,
         }
+
+        # Create parameters
+        self.parameters = {}
+        self.create_params()
 
         # Start thread object
         self.start()
