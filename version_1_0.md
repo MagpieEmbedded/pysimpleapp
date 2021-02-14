@@ -49,11 +49,15 @@ This essentially requires setting up a simple thread loop which can perform GUI 
 Based on the [Python GUI documentation](https://docs.python.org/3/faq/gui.html) we will aim for Tkinter, PyQt/PySide and Kivy support.
 Other GUI frameworks can then follow.
 
-# Fail Fast
+## Fail Fast
 
 While the framework is still very much in development, we should default to a fail fast mechanism.
 This means if threads raise exceptions which are not explicitly handled, the application should end.
 A descriptive error message should be left in the terminal to aid debugging.
+
+## License
+
+We need to find an appropriate license, which will allow open source projects to use this framework while limiting the use it can be put to in commercial, closed source projects.
 
 # Non Goals
 
