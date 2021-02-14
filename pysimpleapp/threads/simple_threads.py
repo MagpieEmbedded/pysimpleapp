@@ -8,12 +8,13 @@ is run.
 """
 
 import threading
-from typing import List
+from enum import Enum
+from typing import List, Tuple, Set
 from queue import Queue
 import logging
-from pysimpleapp.message import Message
+from pysimpleapp.message import Commands, Message
 import time
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractmethod
 
 
 class SimpleThread(ABC, threading.Thread):
@@ -25,7 +26,7 @@ class SimpleThread(ABC, threading.Thread):
     * *create_params* - creates the parameters which should be used during *main* execution
     * *main* - the body of the thread which performs the functionality
     * *_control_loop* - describes how the class executes the main function
-    
+
     It executes its *main* function as part of a control loop which is specified by child classes.
     Before it starts, the parameters can be updated and it can even be ended and prevented from ever running.
 
@@ -42,7 +43,7 @@ class SimpleThread(ABC, threading.Thread):
     There are some in-built commands which can be easily accessed, but the addresses can be changed easily.
     To add custom commands to the thread, simply create a function in the class which takes a
     *pysimpleapp.message.Message* object and give it a key in the address book.
-    
+
     **Example**
 
     .. code-block:: python
@@ -54,21 +55,22 @@ class SimpleThread(ABC, threading.Thread):
 
     """
 
-    def __init__(self, name: str, owner: str, input_queue: Queue, output_queue: Queue):
+    # Define endpoints
+    class Endpoints(Enum):
+        RESULT = "result"
+
+    def __init__(self, name: str):
         """
         Create the thread, set up control flags and call _create_params
 
         :param name: Identifier for the thread, could be list of strings depending on communication model
         :param owner: Address of object which created the thread (often a ThreadManager)
-        :param input_queue: Input pipe for messages which the thread is expected to process
-        :param output_queue: Output pipe for messages which should be sent elsewhere
+        :param message_queue: Input pipe for messages which the thread is expected to process
         """
         # Create thread
         super().__init__(name=name)
         # Set attributes
-        self.owner = owner
-        self.input_queue = input_queue
-        self.output_queue = output_queue
+        self.message_queue = Queue()
 
         # Give the logger name of the thread for debugging
         self.logger = logging.getLogger(f"{type(self).__name__}-{self.name}")
@@ -76,30 +78,32 @@ class SimpleThread(ABC, threading.Thread):
         # Create control flags - some of these are for use in more complex threads
         self.start_flag = threading.Event()
         self.stop_flag = threading.Event()
-        self.reset_flag = threading.Event()
         self.end_flag = threading.Event()
 
-        # Set up address book
-        self.address_book = {
-            "THREAD_START": self._thread_start,
-            "THREAD_STOP": self._thread_stop,
-            "THREAD_END": self._thread_end,
-            "THREAD_UPDATE": self._update_params,
-            "THEAD_HANDLE": self.custom_handler,
+        # Store the callbacks related to message commands
+        self.command_callbacks = {
+            Commands.THREAD_START: self._thread_start,
+            Commands.THREAD_STOP: self._thread_stop,
+            Commands.THREAD_END: self._thread_end,
+            Commands.THREAD_SUBSCRIBE: self._thread_subscribe,
+            Commands.THREAD_HANDLE: self.custom_handler,
         }
+
+        # Dictionary for handling subscriptions
+        self.subscriptions: dict[Set[Tuple(str)], Queue] = {self.Endpoints.RESULT: []}
 
         # Create parameters
         self.parameters = {}
-        self.create_params()
+        self.setup()
 
-        # Start thread object
-        self.start()
+        # Start thread object running
+        threading.Thread.start(self)
 
-    @abstractclassmethod
+    @abstractmethod
     def main(self):
         """
         Override this function to provide the thread with instructions.
-        
+
         *main* provides the functionality for the thread.
         It may contain heavy computations, IO processing and anything you want to do without having to worry about
         *exactly* how long it takes.
@@ -107,7 +111,7 @@ class SimpleThread(ABC, threading.Thread):
         **Good ideas:**
 
         * Read from parameters to decide on program execution
-        * Send *pysimpleapp.Message* objects out through the *output_queue* with feedback and information
+        * Send *pysimpleapp.Message* to endpoints where they will be sent to subscribers
         * Handle exceptions to prevent unnecessary failures of the thread
 
         **Bad ideas:**
@@ -118,11 +122,10 @@ class SimpleThread(ABC, threading.Thread):
         """
         pass
 
-    @abstractclassmethod
-    def create_params(self):
+    @abstractmethod
+    def setup(self):
         """
-        Override this function to add parameters.
-        This should be the only method used to create parameters in a thread.
+        Override this function to do whatever setup is necessary for the thread.
         Example:
 
         .. code-block:: python
@@ -142,7 +145,17 @@ class SimpleThread(ABC, threading.Thread):
         self.stop_flag.set()
 
     def _thread_end(self, message: Message):
+        """Handle an end message by setting the end flag"""
         self.end_flag.set()
+
+    def _thread_subscribe(self, message: Message):
+        """Handle a subscription flag by putting the provided queue
+        in the appropriate endpoint"""
+        try:
+            self.subscriptions[message.package.endpoint].append(message.package.queue)
+        except KeyError as e:
+            self.logger.error(f"Could not find endpoint {message.package.endpoint}")
+            raise e
 
     def custom_handler(self, message: Message):
         """
@@ -160,7 +173,7 @@ class SimpleThread(ABC, threading.Thread):
         Update parameters with new values if the parameter is available.
 
         If the parameter is not found, this will be recorded in the log as an error but will not crash the thread.
-        
+
         :param new_params: Dictionary with one or more parameters to update.
         Must already have been created in *_create_params"
         """
@@ -185,16 +198,6 @@ class SimpleThread(ABC, threading.Thread):
         """Handle incoming messages.
 
         Expects messages to *pysimpleapp.Message* objects
-
-        Checks that message is addressed to itself, by name, then runs command.
-        Available commands:
-            * THREAD_START - will instruct the thread to run
-            * THREAD_STOP - will instruct the thread to stop
-            * THREAD_END - will instruct the thread to end
-            * THREAD_UPDATE - will instruct the thread to update parameters from the attached package
-            * THREAD_HANDLE - calls the custom_handler function with the package as input
-        Sending another command will be recorded as an error but will not crash the thread
-        
         :params message: A *pysimpleapp.Message* object to process
         """
         # Log the message
@@ -202,26 +205,20 @@ class SimpleThread(ABC, threading.Thread):
             f"MESSAGE Sender: {message.sender}, Command {message.command}, Package: {message.package}"
         )
 
-        # Sanity check that this is the thread meant to be receiving this message
+        # Try to execute the command specified in the address book, otherwise raise an error
         try:
-            assert message.receiver == self.name or message.receiver == [self.name]
-        except AssertionError:
-            self.logger.error(
-                f"Expected message for {self.name}, got message for {message.receiver}\n"
-            )
-            # Leave
-            return
-        # Try to execute the command specified in the address book, otherwise make a note that it didn't work
-        try:
-            self.address_book[message.command](message)
-        except KeyError:
+            self.command_callbacks[message.command](message)
+        except KeyError as e:
             logging.error(
                 f"Expected command in {self.address_book.keys()}, got {message.command} in message: {message}"
             )
+            raise e
+        except Exception:
+            raise
 
         return
 
-    @abstractclassmethod
+    @abstractmethod
     def _control_loop(self):
         """
         This defines the programatic flow for the thread.
@@ -245,22 +242,23 @@ class SimpleThread(ABC, threading.Thread):
         """
         while self.end_flag.is_set() is False:
             # Get message from input queue and handle it
-            message = self.input_queue.get()
+            message = self.message_queue.get()
             self._message_handle(message)
 
             # Check whether start flag has been raised
             if self.start_flag.is_set():
                 # Clear the flag to prevent running continuously
                 self.start_flag.clear()
-                try:
-                    self._control_loop()
-                except Exception:
-                    self.logger.exception("Error ocurred in main function")
-                    # Exit gracefully
-                    self.end_flag.set()
+
+                # Run the control loop
+                self._control_loop()
 
         # Return true and exit
         return True
+
+    def start(self):
+        """Put THREAD_START message in queue"""
+        self.message_queue.put(Message((self.name,), Commands.THREAD_START, None))
 
     def send_to(self, receiver: List[str], command: str, package: any):
         """Helper function for sending information from a thread correctly"""
@@ -272,7 +270,7 @@ class SimpleThread(ABC, threading.Thread):
 class MultiRunThread(SimpleThread):
     """
     ***MultiRunThread*** is a child of ***SimpleThread*** which may run the *main* function repeatedly.
-    
+
     It will execute after a start command, and then await further instruction.
     This may be another start command, in which case the *main* function will repeat.
     Or it may be an update or end command, which will cause the parameters to update or the thread to end, respectively.
@@ -345,7 +343,7 @@ class RepeatingThread(SimpleThread):
         """
         Thread start in a repeating thread raises start flag and also clears stop flag.
         This ensures that a THREAD_START command will always trigger a main run.
-        
+
         Cancel the repeat_timer if it is currently waiting to ensure timing starts from this point
         """
         self.start_flag.set()
@@ -383,7 +381,7 @@ class PreciseRepeatingThread(RepeatingThread):
     next call.
     Use this if there is a function for which regularity is important but functionality can
     occasionally be slow.
-    
+
     If main execution takes longer than loop_timer, an error message will be logged.
     """
 
@@ -426,7 +424,7 @@ class PreciseRepeatingThread(RepeatingThread):
     def _control_loop(self):
         """
         Get a start time, run the main function and set a timer for as close to the timer_loop as possible.
-        
+
         If the main loop took longer than the timer_loop period, raise a TimeoutError to be logged and handled in *run*.
         """
         if not self.stop_flag.is_set():

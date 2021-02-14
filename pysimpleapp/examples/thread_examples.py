@@ -15,7 +15,7 @@ from pysimpleapp.message import Message
 
 
 class ExampleSingleRunThread(SingleRunThread):
-    def create_params(self):
+    def setup(self):
         pass
 
     def main(self):
@@ -23,7 +23,7 @@ class ExampleSingleRunThread(SingleRunThread):
 
 
 class ExampleMultiRunThread(MultiRunThread):
-    def create_params(self):
+    def setup(self):
         self.times_ran = 1
 
     def main(self):
