@@ -8,13 +8,18 @@ is run.
 """
 
 import threading
-from enum import Enum
+from enum import Enum, unique
 from typing import List, Tuple, Set
 from queue import Queue
 import logging
 from pysimpleapp.message import Commands, Message
 import time
 from abc import ABC, abstractmethod
+
+# Define endpoints
+@unique
+class Endpoints(Enum):
+    RESULT = "result"
 
 
 class SimpleThread(ABC, threading.Thread):
@@ -55,9 +60,7 @@ class SimpleThread(ABC, threading.Thread):
 
     """
 
-    # Define endpoints
-    class Endpoints(Enum):
-        RESULT = "result"
+    Endpoints = Endpoints
 
     def __init__(self, name: str):
         """
@@ -90,7 +93,9 @@ class SimpleThread(ABC, threading.Thread):
         }
 
         # Dictionary for handling subscriptions
-        self.subscriptions: dict[Set[Tuple(str)], Queue] = {self.Endpoints.RESULT: []}
+        self.subscriptions: dict[Set[Tuple(str)], Queue] = {
+            endpoint: [] for endpoint in list(self.Endpoints)
+        }
 
         # Create parameters
         self.parameters = {}
@@ -149,8 +154,10 @@ class SimpleThread(ABC, threading.Thread):
         self.end_flag.set()
 
     def _thread_subscribe(self, message: Message):
-        """Handle a subscription flag by putting the provided queue
-        in the appropriate endpoint"""
+        """
+        Handle a subscription flag by putting the provided queue
+        in the appropriate endpoint
+        """
         try:
             self.subscriptions[message.package.endpoint].append(message.package.queue)
         except KeyError as e:
@@ -267,6 +274,30 @@ class SimpleThread(ABC, threading.Thread):
     def end(self):
         """Put THREAD_STOP message in queue"""
         self.message_queue.put(Message((self.name,), Commands.THREAD_END, None))
+
+    def publish(
+        self, package, endpoint=Endpoints.RESULT, command=Commands.THREAD_HANDLE
+    ):
+        """
+        Publishes a package to all the subscribers of an endpoint
+
+        By default, will publish to the RESULT endpoint with a command of THREAD_HANDLE.
+        You may wish to provide a different endpoint or command depending on how
+        the application is set up.
+        """
+        try:
+            for queue in self.subscriptions[endpoint]:
+                queue.put(Message(self.name, command, package))
+        except KeyError:
+            logging.error(
+                f"Thread {self.name} trying to publish to endpoint {endpoint} which was not created"
+            )
+            raise
+        except Exception:
+            logging.error(
+                f"Isse publishing to endpoing {endpoint} on thread {self.name}"
+            )
+            raise
 
     def send_to(self, receiver: List[str], command: str, package: any):
         """Helper function for sending information from a thread correctly"""

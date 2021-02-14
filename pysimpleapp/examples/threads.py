@@ -20,6 +20,7 @@ class ExampleSingleRunThread(SingleRunThread):
 
     def main(self):
         print("Running single run thread...")
+        self.publish(None)
 
 
 class ExampleMultiRunThread(MultiRunThread):
@@ -29,6 +30,7 @@ class ExampleMultiRunThread(MultiRunThread):
     def main(self):
         self.times_ran += 1
         print(f"Running multi run thread called {self.name} {self.times_ran} times")
+        self.publish(self.times_ran)
 
 
 class ExampleRepeatingThread(RepeatingThread):
