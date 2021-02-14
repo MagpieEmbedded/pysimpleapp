@@ -24,11 +24,11 @@ class ExampleSingleRunThread(SingleRunThread):
 
 class ExampleMultiRunThread(MultiRunThread):
     def setup(self):
-        self.times_ran = 1
+        self.times_ran = 0
 
     def main(self):
-        print(f"Running multi run thread called {self.name} {self.times_ran} times")
         self.times_ran += 1
+        print(f"Running multi run thread called {self.name} {self.times_ran} times")
 
 
 class ExampleRepeatingThread(RepeatingThread):

@@ -260,6 +260,14 @@ class SimpleThread(ABC, threading.Thread):
         """Put THREAD_START message in queue"""
         self.message_queue.put(Message((self.name,), Commands.THREAD_START, None))
 
+    def stop(self):
+        """Put THREAD_STOP message in queue"""
+        self.message_queue.put(Message((self.name,), Commands.THREAD_STOP, None))
+
+    def end(self):
+        """Put THREAD_STOP message in queue"""
+        self.message_queue.put(Message((self.name,), Commands.THREAD_END, None))
+
     def send_to(self, receiver: List[str], command: str, package: any):
         """Helper function for sending information from a thread correctly"""
         self.output_queue.put(
