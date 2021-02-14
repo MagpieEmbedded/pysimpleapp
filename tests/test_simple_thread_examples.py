@@ -3,33 +3,9 @@ import time
 from queue import Queue
 
 import pytest
-from tests.utils import min_sleep, send_subscription_message
+from tests.utils import make_thread, min_sleep, send_subscription_message
 from pysimpleapp.examples.threads import ExampleSingleRunThread, ExampleMultiRunThread
 from pysimpleapp.message import Message, Commands
-
-
-@pytest.fixture
-def single_run_thread():
-    e = ExampleSingleRunThread("E")
-
-    yield e
-
-    # Stop thread if still running
-    while e.is_alive():
-        e.end()
-        min_sleep()
-
-
-@pytest.fixture
-def multi_run_thread():
-    m = ExampleMultiRunThread("M")
-
-    yield m
-
-    # Stop thread if still running
-    while m.is_alive():
-        m.end()
-        min_sleep()
 
 
 @pytest.mark.timeout(1, method="thread")
@@ -81,11 +57,13 @@ def test_multi_run_thread_runs_then_ends():
 
 
 @pytest.mark.timeout(1, method="thread")
-def test_single_run_thread_puts_message_in_queue(single_run_thread):
+def test_single_run_thread_puts_message_in_queue(make_thread):
+    e = make_thread(ExampleSingleRunThread, "E")
+
     q = Queue()
 
-    send_subscription_message(single_run_thread, q)
-    single_run_thread.start()
+    send_subscription_message(e, q)
+    e.start()
 
     min_sleep()
 
@@ -95,15 +73,17 @@ def test_single_run_thread_puts_message_in_queue(single_run_thread):
 
 
 @pytest.mark.timeout(1, method="thread")
-def test_multi_run_thread_puts_message_in_queue(multi_run_thread):
+def test_multi_run_thread_puts_message_in_queue(make_thread):
+    m = make_thread(ExampleMultiRunThread, "M")
+
     q = Queue()
 
-    send_subscription_message(multi_run_thread, q)
-    multi_run_thread.start()
-    multi_run_thread.start()
-    multi_run_thread.start()
-    multi_run_thread.start()
-    multi_run_thread.end()
+    send_subscription_message(m, q)
+    m.start()
+    m.start()
+    m.start()
+    m.start()
+    m.end()
 
     min_sleep()
 
