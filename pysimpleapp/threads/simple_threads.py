@@ -293,6 +293,11 @@ class SimpleThread(ABC, threading.Thread):
                 f"Thread {self.name} trying to publish to endpoint {endpoint} which was not created"
             )
             raise
+        except AttributeError:
+            logging.error(
+                f"Thread {self.name} trying to publish to endpoint {endpoint} which was not created"
+            )
+            raise
         except Exception:
             logging.error(
                 f"Isse publishing to endpoing {endpoint} on thread {self.name}"

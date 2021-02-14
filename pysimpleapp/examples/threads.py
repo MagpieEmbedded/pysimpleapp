@@ -4,6 +4,7 @@ import threading
 from queue import Queue
 import logging
 import time
+from enum import Enum
 
 from pysimpleapp.threads.simple_threads import (
     SingleRunThread,
@@ -31,6 +32,20 @@ class ExampleMultiRunThread(MultiRunThread):
         self.times_ran += 1
         print(f"Running multi run thread called {self.name} {self.times_ran} times")
         self.publish(self.times_ran)
+
+
+class ExampleAlternatingThread(MultiRunThread):
+    class Endpoints(Enum):
+        RESULT = "result"
+        NOT_RESULT = "not_result"
+
+    def setup(self):
+        self.result = True
+
+    def main(self):
+        self.publish(self.result, endpoint=self.Endpoints.RESULT)
+        self.publish(not (self.result), endpoint=self.Endpoints.NOT_RESULT)
+        self.result = not (self.result)
 
 
 class ExampleRepeatingThread(RepeatingThread):

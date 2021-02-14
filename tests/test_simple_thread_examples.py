@@ -3,8 +3,12 @@ import time
 from queue import Queue
 
 import pytest
-from tests.utils import make_thread, min_sleep, send_subscription_message
-from pysimpleapp.examples.threads import ExampleSingleRunThread, ExampleMultiRunThread
+from tests.utils import min_sleep, send_subscription_message
+from pysimpleapp.examples.threads import (
+    ExampleSingleRunThread,
+    ExampleMultiRunThread,
+    ExampleAlternatingThread,
+)
 from pysimpleapp.message import Message, Commands
 
 
@@ -93,3 +97,28 @@ def test_multi_run_thread_puts_message_in_queue(make_thread):
     assert q.get() == Message("M", Commands.THREAD_HANDLE, 2)
     assert q.get() == Message("M", Commands.THREAD_HANDLE, 3)
     assert q.get() == Message("M", Commands.THREAD_HANDLE, 4)
+
+
+@pytest.mark.timeout(1, method="thread")
+def test_alternating_endpoints_working_as_expected(make_thread):
+    a = make_thread(ExampleAlternatingThread, "A")
+
+    q_a = Queue()
+    q_b = Queue()
+
+    send_subscription_message(a, q_a, a.Endpoints.RESULT)
+    send_subscription_message(a, q_b, a.Endpoints.NOT_RESULT)
+
+    a.start()
+    a.start()
+    a.end()
+
+    min_sleep()
+
+    assert threading.active_count() == 2
+    assert q_a.qsize() == 2
+    assert q_b.qsize() == 2
+    assert q_a.get().package is True
+    assert q_a.get().package is False
+    assert q_b.get().package is False
+    assert q_b.get().package is True
