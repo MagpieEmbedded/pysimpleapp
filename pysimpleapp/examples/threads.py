@@ -49,18 +49,13 @@ class ExampleAlternatingThread(MultiRunThread):
 
 
 class ExampleRepeatingThread(RepeatingThread):
-    def create_params(self):
-        pass
-
-    def _thread_start(self, message: Message):
-        super()._thread_start(message)
-        self.start_time = time.time()
+    def setup(self):
+        self.times_ran = 0
 
     def main(self):
-        print(
-            f"Running thread {time.time() - self.start_time:.3f}s after start command"
-        )
-        time.sleep(0.2)
+        self.times_ran += 1
+        print(f"Running multi run thread called {self.name} {self.times_ran} times")
+        self.publish(self.times_ran)
 
 
 class ExamplePreciseThread(PreciseRepeatingThread):

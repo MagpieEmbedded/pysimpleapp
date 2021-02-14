@@ -14,6 +14,7 @@ from queue import Queue
 import logging
 from pysimpleapp.message import Commands, Message
 import time
+from datetime import timedelta
 from abc import ABC, abstractmethod
 
 # Define endpoints
@@ -272,7 +273,7 @@ class SimpleThread(ABC, threading.Thread):
         self.message_queue.put(Message((self.name,), Commands.THREAD_STOP, None))
 
     def end(self):
-        """Put THREAD_STOP message in queue"""
+        """Put THREAD_END message in queue"""
         self.message_queue.put(Message((self.name,), Commands.THREAD_END, None))
 
     def publish(
@@ -367,12 +368,12 @@ class RepeatingThread(SimpleThread):
     *main* and *create_params* are left as abstract methods for the user to implement.
     """
 
-    def __init__(self, name: str, owner: str, input_queue: Queue, output_queue: Queue):
-        super().__init__(name, owner, input_queue, output_queue)
+    def __init__(self, name: str, interval: timedelta = timedelta(seconds=1)):
+        super().__init__(name)
         # Add loop timer parameter to describe how often function should run
-        self.parameters["loop_timer"] = 1
+        self.loop_timer = timedelta
         # Add repeat function to address book
-        self.address_book["THREAD_REPEAT"] = self._thread_repeat
+        self.command_callbacks["THREAD_REPEAT"] = self._thread_repeat
         # Hold onto the current timer to cancel if necessary
         self.repeat_timer = None
 
@@ -403,14 +404,14 @@ class RepeatingThread(SimpleThread):
 
     def repeating_start(self):
         """Command to set the *main* function going again"""
-        self.input_queue.put(Message(self.name, self.name, "THREAD_REPEAT", None))
+        self.message_queue.put(Message(self.name, "THREAD_REPEAT", None))
 
     def _control_loop(self):
         """Run the main function and set a timer on sending a new start command, unless the stop flag is raised."""
         if not self.stop_flag.is_set():
             self.main()
             self.repeat_timer = threading.Timer(
-                self.parameters["loop_timer"], self.repeating_start
+                self.loop_timer.total_seconds(), self.repeating_start
             )
             self.repeat_timer.start()
 
