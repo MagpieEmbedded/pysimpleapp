@@ -12,6 +12,7 @@ Welcome to pysimpleapp's documentation!
    contributing
    authors
    history
+   license
 
 Indices and tables
 ==================
