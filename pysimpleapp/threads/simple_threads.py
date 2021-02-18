@@ -377,6 +377,10 @@ class RepeatingThread(SimpleThread):
         # Hold onto the current timer to cancel if necessary
         self.repeat_timer = None
 
+    def cancel_timer(self):
+        if self.repeat_timer:
+            self.repeat_timer.cancel()
+
     def _thread_repeat(self, message: Message):
         """
         Raises the start flag but does not clear stop flag.
@@ -393,14 +397,16 @@ class RepeatingThread(SimpleThread):
         """
         self.start_flag.set()
         self.stop_flag.clear()
-        if self.repeat_timer:
-            self.repeat_timer.cancel()
+        self.cancel_timer()
 
     def _thread_stop(self, message: Message):
         """Raise the stop flag and cancel the current timer"""
         self.stop_flag.set()
-        if self.repeat_timer:
-            self.repeat_timer.cancel()
+        self.cancel_timer()
+
+    def _thread_end(self, message):
+        self.end_flag.set()
+        self.cancel_timer()
 
     def repeating_start(self):
         """Command to set the *main* function going again"""

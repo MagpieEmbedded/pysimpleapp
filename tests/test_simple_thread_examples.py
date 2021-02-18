@@ -167,9 +167,43 @@ def test_example_repeating_test_runs_a_known_number_of_times(make_thread):
     time.sleep(0.7)
 
     r.end()
-    time.sleep(0.2)
+    min_sleep()
 
     assert threading.active_count() == 2
     assert q.qsize() == 4
     q_results = [q.get().package for i in range(4)]
     assert q_results == [1, 2, 3, 4]
+
+
+@pytest.mark.timeout(1, method="thread")
+def test_example_repeating_test_can_be_stopped_and_run_again(make_thread):
+    r = make_thread(ExampleRepeatingThread, "R")
+
+    q = Queue()
+
+    # Set loop timer to be faster than usual
+    r.loop_timer = timedelta(milliseconds=200)
+
+    send_subscription_message(r, q)
+
+    r.start()
+    time.sleep(0.3)
+
+    # r runs at time t = 0, 0.2
+
+    r.stop()
+    min_sleep()
+    assert q.qsize() == 2
+
+    r.start()
+    time.sleep(0.5)
+
+    # r runs at approx t = 0.3, 0.5, 0.7
+
+    r.end()
+    time.sleep(0.1)
+
+    assert threading.active_count() == 2
+    assert q.qsize() == 5
+    q_results = [q.get().package for i in range(5)]
+    assert q_results == [1, 2, 3, 4, 5]
