@@ -2,9 +2,8 @@
 This module simply contains the message class which will be used to move information around the app
 """
 
-from dataclasses import dataclass
 from enum import Enum
-from typing import Tuple
+from typing import NamedTuple, Tuple
 from queue import Queue
 
 
@@ -16,7 +15,6 @@ class Commands(Enum):
     THREAD_HANDLE = "THREAD_HANDLE"
 
 
-@dataclass
 class Message:
     """
     Generic message class which will be used to move information around the system
@@ -28,9 +26,10 @@ class Message:
     :param package: Data transferred as part of the message
     """
 
-    sender: Tuple[str]
-    command: str
-    package: any
+    def __init__(self, sender: Tuple[str], command: str, package: any):
+        self.sender = sender
+        self.command = command
+        self.package = package
 
     def __str__(self):
         """Provides a human readable output of the message"""
@@ -39,7 +38,6 @@ class Message:
         )
 
 
-@dataclass
-class SubscriptionPackage:
+class SubscriptionPackage(NamedTuple):
     endpoint: str
     queue: Queue
