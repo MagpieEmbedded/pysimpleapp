@@ -3,6 +3,8 @@
 dist: xenial
 language: python
 python:
+  - 3.9
+  - 3.8
   - 3.7
   - 3.6
 
@@ -14,9 +16,8 @@ install:
 script: 
   - tox
   - python setup.py install
-  - python pysimpleapp/examples/thread_examples.py
-  - python pysimpleapp/examples/example_tm.py
-  - python pysimpleapp/examples/example_tm_multirun.py
+  - pip install -r requirements_dev.txt
+  - pytest
 
 # Assuming you have installed the travis-ci CLI tool, after you
 # create the Github repo and add it to Travis, run the

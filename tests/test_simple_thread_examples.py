@@ -2,6 +2,7 @@ import threading
 import time
 from datetime import timedelta
 from queue import Queue
+from unittest.mock import Mock
 
 import pytest
 from tests.utils import min_sleep, send_subscription_message
@@ -10,6 +11,7 @@ from pysimpleapp.examples.threads import (
     ExampleMultiRunThread,
     ExampleAlternatingThread,
     ExampleRepeatingThread,
+    ExampleExceptionThread,
 )
 from pysimpleapp.message import Message, Commands
 
@@ -39,6 +41,20 @@ def test_single_run_thread_ends_straight_away():
     min_sleep()
 
     assert threading.active_count() == 2
+
+
+@pytest.mark.timeout(1, method="thread")
+def test_exception_can_be_caught(make_thread):
+    mock_supervisor = Mock()
+
+    e = make_thread(ExampleExceptionThread, "E", supervisor=mock_supervisor)
+
+    e.start()
+    min_sleep()
+
+    mock_supervisor.raise_exception.assert_called_once()
+    # Check that a reference to the thread is returned as the last argument
+    assert e is mock_supervisor.raise_exception.call_args.args[0][-1]
 
 
 @pytest.mark.timeout(1, method="thread")

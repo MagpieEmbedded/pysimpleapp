@@ -13,6 +13,7 @@ from typing import List, Tuple, Set
 from queue import Queue
 import logging
 from pysimpleapp.message import Commands, Message
+import sys
 import time
 from datetime import timedelta
 from abc import ABC, abstractmethod
@@ -64,7 +65,7 @@ class SimpleThread(ABC, threading.Thread):
 
     Endpoints = Endpoints
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, supervisor=None):
         """
         Create the thread, set up control flags and call _create_params
 
@@ -76,6 +77,7 @@ class SimpleThread(ABC, threading.Thread):
         super().__init__(name=name)
         # Set attributes
         self.message_queue = Queue()
+        self.supervisor = supervisor
 
         # Give the logger name of the thread for debugging
         self.logger = logging.getLogger(f"{type(self).__name__}-{self.name}")
@@ -236,6 +238,15 @@ class SimpleThread(ABC, threading.Thread):
         """
         pass
 
+    def raise_exception(self, exception: Exception):
+        """
+        Notify the supervisor that an exception occurred during thread running
+
+        Passes same information as what is received by `threading.excepthook`
+        """
+        if self.supervisor is not None:
+            self.supervisor.raise_exception([*sys.exc_info(), self])
+
     def run(self):
         """
         This defines the programatic flow for the thread.
@@ -249,21 +260,25 @@ class SimpleThread(ABC, threading.Thread):
 
         If the control loop raises an exception, the thread will exit gracefully.
         """
-        while self.end_flag.is_set() is False:
-            # Get message from input queue and handle it
-            message = self.message_queue.get()
-            self._message_handle(message)
+        try:
+            while self.end_flag.is_set() is False:
+                # Get message from input queue and handle it
+                message = self.message_queue.get()
+                self._message_handle(message)
 
-            # Check whether start flag has been raised
-            if self.start_flag.is_set():
-                # Clear the flag to prevent running continuously
-                self.start_flag.clear()
+                # Check whether start flag has been raised
+                if self.start_flag.is_set():
+                    # Clear the flag to prevent running continuously
+                    self.start_flag.clear()
 
-                # Run the control loop
-                self._control_loop()
+                    # Run the control loop
+                    self._control_loop()
 
-        # Return true and exit
-        return True
+            # Return true and exit
+            return True
+        except Exception as e:
+            self.raise_exception(e)
+            raise e
 
     def start(self):
         """Put THREAD_START message in queue"""

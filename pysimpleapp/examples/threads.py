@@ -23,6 +23,15 @@ class ExampleSingleRunThread(SingleRunThread):
         self.publish(None)
 
 
+class ExampleExceptionThread(SingleRunThread):
+    def setup(self):
+        pass
+
+    def main(self):
+        print("Running error thread...")
+        raise Exception
+
+
 class ExampleMultiRunThread(MultiRunThread):
     def setup(self):
         self.times_ran = 0
