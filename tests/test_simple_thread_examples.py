@@ -54,7 +54,7 @@ def test_exception_can_be_caught(make_thread):
 
     mock_supervisor.raise_exception.assert_called_once()
     # Check that a reference to the thread is returned as the last argument
-    assert e is mock_supervisor.raise_exception.call_args.args[0][-1]
+    assert e is mock_supervisor.raise_exception.call_args[0][0][-1]
 
 
 @pytest.mark.timeout(1, method="thread")
