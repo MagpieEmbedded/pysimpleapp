@@ -14,7 +14,6 @@ install:
 
 # Command to run tests, e.g. python setup.py test
 script: 
-  - tox
   - python setup.py install
   - pip install -r requirements_dev.txt
   - pytest

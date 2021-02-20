@@ -31,6 +31,13 @@ class Message:
         self.command = command
         self.package = package
 
+    def __eq__(self, message):
+        return (
+            self.sender == message.sender
+            and self.command == message.command
+            and self.package == message.package
+        )
+
     def __str__(self):
         """Provides a human readable output of the message"""
         return (
