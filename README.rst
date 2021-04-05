@@ -37,7 +37,7 @@ This will teach how to use the software and explain why the software is this way
 
 * Source code: https://github.com/MagpieEmbedded/pysimpleapp
 * Documentation: https://pysimpleapp.readthedocs.io.
-* Free software: MIT license
+* Free software: GPLv3
 
 Installation
 ------------
